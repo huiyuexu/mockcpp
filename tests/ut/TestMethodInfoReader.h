@@ -121,10 +121,25 @@ public:
       TS_ASSERT(getDeltaOfMethod(&Interface::base10) == getDeltaOfMethod(&Interface::base11));
    }
 
-	void testShouldNotBeEqualIf2MethodsDefinedInDifferentBaseInterface()
+   void testShouldNotBeEqualIf2MethodsDefinedInDifferentBaseInterface()
    {
       TS_ASSERT(getDeltaOfMethod(&Interface::base00) != getDeltaOfMethod(&Interface::base10));
    }
+
+#if defined(__aarch64__) || defined(__arm__)
+   void testShouldDecodeArmMemberFunctionPointersExactly()
+   {
+      TS_ASSERT_EQUALS(0, getIndexOfMethod(&Interface::base00));
+      TS_ASSERT_EQUALS(1, getIndexOfMethod(&Interface::base01));
+      TS_ASSERT_EQUALS(0, getIndexOfMethod(&Interface::base10));
+      TS_ASSERT_EQUALS(1, getIndexOfMethod(&Interface::base11));
+
+      TS_ASSERT_EQUALS(0, getDeltaOfMethod(&Interface::base00));
+      TS_ASSERT_EQUALS(0, getDeltaOfMethod(&Interface::base01));
+      TS_ASSERT_EQUALS(1, getDeltaOfMethod(&Interface::base10));
+      TS_ASSERT_EQUALS(1, getDeltaOfMethod(&Interface::base11));
+   }
+#endif
 
    void testShouldThrowAnExceptionIfTryToGetVtblIndexOfANonVirtualMethod()
    {
@@ -141,4 +156,3 @@ public:
       TS_ASSERT_THROWS(MOCKCPP_NS::getAddrOfMethod(&Interface::base00), MOCKCPP_NS::Exception);
    }
 };
-

@@ -18,6 +18,7 @@
 
 #include <testcpp/testcpp.hpp>
 #include <mockcpp/Formatter.h>
+#include <limits.h>
 #include <stdio.h>
 
 USING_MOCKCPP_NS
@@ -304,7 +305,11 @@ public:
    void testShouldBeAbleToStringnizeNegativeChar()
    {
       char c = -1;
+#if CHAR_MIN < 0
       std::string expected("(char)0xff/-1");
+#else
+      std::string expected("(char)0xff/255");
+#endif
       TS_ASSERT_EQUALS(expected, toTypeAndValueString(c));
    }
 
@@ -412,4 +417,3 @@ public:
 #endif
    }
 };
-

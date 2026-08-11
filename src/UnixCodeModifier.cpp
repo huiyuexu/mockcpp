@@ -22,18 +22,29 @@
 
 #include <mockcpp/CodeModifier.h>
 
-//////////////////////////////////////////////////////////////////
-#define ALIGN_TO_PAGE_BOUNDARY(addr, page_size) (void*) (((uintptr_t)addr) & (~(page_size - 1)))
-//////////////////////////////////////////////////////////////////
-
 MOCKCPP_NS_START
 
 bool CodeModifier::modify(void *dest, const void *src, size_t size)
 {
-    int page_size = getpagesize();
-    if(::mprotect(ALIGN_TO_PAGE_BOUNDARY(dest, page_size), page_size * 2, PROT_EXEC | PROT_WRITE | PROT_READ ) != 0)
-    {  
-       return false; 
+    if(size == 0)
+    {
+       return true;
+    }
+
+    const size_t page_size = static_cast<size_t>(getpagesize());
+    const uintptr_t page_mask = static_cast<uintptr_t>(page_size - 1);
+    const uintptr_t first_page = reinterpret_cast<uintptr_t>(dest) & ~page_mask;
+    const uintptr_t last_page =
+       (reinterpret_cast<uintptr_t>(dest) + size - 1) & ~page_mask;
+    // mprotect fails if any page in the requested range is unmapped.
+    // Protect only the pages that the patch actually touches.
+    const size_t protected_size =
+       static_cast<size_t>(last_page - first_page) + page_size;
+
+    if(::mprotect(reinterpret_cast<void*>(first_page), protected_size,
+                  PROT_EXEC | PROT_WRITE | PROT_READ) != 0)
+    {
+       return false;
     }
 
     ::memcpy(dest, src, size);

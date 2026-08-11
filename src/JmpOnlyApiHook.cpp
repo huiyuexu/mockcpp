@@ -20,6 +20,7 @@
 #include "JmpOnlyApiHook.h"
 #include <mockcpp/JmpCode.h>
 #include <mockcpp/CodeModifier.h>
+#include <mockcpp/ReportFailure.h>
 
 MOCKCPP_NS_START
 
@@ -54,20 +55,39 @@ struct JmpOnlyApiHookImpl
    void startHook()
    {
       saveOriginalData();
+#if defined(_WIN32) || defined(_WIN64)
+      // WinCodeModifier can report a cache-flush or protection-restore failure
+      // after WriteProcessMemory has already installed the jump.  Preserve the
+      // historical ownership behavior until its result can express that state.
       changeCode(m_jmpCode.getCodeData());
+#else
+      if(!changeCode(m_jmpCode.getCodeData()))
+      {
+         delete [] m_originalData;
+         m_originalData = 0;
+         MOCKCPP_REPORT_FAILURE(
+            "mockcpp failed to install API hook: unable to modify target code");
+      }
+#endif
    }
 
    /////////////////////////////////////////////////////
    void stopHook()
    {
+      if(m_originalData == 0)
+      {
+         return;
+      }
+
       changeCode(m_originalData);
       delete [] m_originalData;
+      m_originalData = 0;
    }
 
    /////////////////////////////////////////////////////
-   void changeCode(const void* data)
+   bool changeCode(const void* data)
    {
-      CodeModifier::modify(m_api, data, m_jmpCode.getCodeSize());
+      return CodeModifier::modify(m_api, data, m_jmpCode.getCodeSize());
    }
 
    /////////////////////////////////////////////////////

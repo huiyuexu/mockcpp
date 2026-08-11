@@ -27,14 +27,17 @@ struct JmpCodeImpl
 {
    ////////////////////////////////////////////////
    JmpCodeImpl(const void* from, const void* to)
-#if defined(__arm__) || defined(_M_ARM)
+#if defined(__aarch64__) || defined(_M_ARM64)
+      : m_codeSize(buildAArch64JmpCode(m_code, from, to))
+#elif defined(__arm__) || defined(_M_ARM)
       : m_codeSize(buildArmJmpCode(m_code, from, to))
 #else
       : m_codeSize(sizeof(jmpCodeTemplate))
 #endif
       , m_patchAddress(GET_JMP_CODE_PATCH_ADDRESS(from))
    {
-#if !defined(__arm__) && !defined(_M_ARM)
+#if !defined(__aarch64__) && !defined(_M_ARM64) && \
+    !defined(__arm__) && !defined(_M_ARM)
       ::memcpy(m_code, jmpCodeTemplate, sizeof(jmpCodeTemplate));
       SET_JMP_CODE(m_code, from, to);
 #endif
@@ -60,7 +63,8 @@ struct JmpCodeImpl
 
    ////////////////////////////////////////////////
 
-#if defined(__arm__) || defined(_M_ARM)
+#if defined(__aarch64__) || defined(_M_ARM64) || \
+    defined(__arm__) || defined(_M_ARM)
    unsigned char m_code[MAX_JMP_CODE_SIZE];
 #else
    unsigned char m_code[sizeof(jmpCodeTemplate)];

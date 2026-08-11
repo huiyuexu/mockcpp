@@ -24,9 +24,19 @@ MOCKCPP_NS_START
 ///////////////////////////////////////////////////////////
 ApiHookKey::ApiHookKey(const void* api, ApiHookHolder* holder)
    : apiAddress(api)
+   , hook(0)
    , hookHolder(holder)
 {
-   hook = new ApiHook(api, holder->getApiHook());
+   try
+   {
+      hook = new ApiHook(api, holder->getApiHook());
+   }
+   catch(...)
+   {
+      delete hookHolder;
+      hookHolder = 0;
+      throw;
+   }
 }
 
 ///////////////////////////////////////////////////////////

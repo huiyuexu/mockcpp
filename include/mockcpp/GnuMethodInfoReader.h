@@ -18,6 +18,7 @@
 #define __MOCKCPP_GNU_METHOD_INFO_READER_H
 
 #include <algorithm>
+#include <stddef.h>
 #include <mockcpp/mockcpp.h>
 
 #include <mockcpp/OutputStringStream.h>
@@ -32,11 +33,21 @@ struct GnuMethodDescription
 {
    union {
 	  void* addr;
-     int index;
+     ptrdiff_t index;
    }u;
  
-   int delta;
+   ptrdiff_t delta;
 };
+
+inline bool gnuMethodIsVirtual(const GnuMethodDescription& method)
+{
+#if defined(__aarch64__) || defined(__arm__)
+   // Arm's GNU C++ ABI stores the virtual bit in adj, not in ptr.
+   return (method.delta & 1) != 0;
+#else
+   return (method.u.index & 1) != 0;
+#endif
+}
 
 ///////////////////////////////////////////////////////////
 template <typename Method>
@@ -54,12 +65,12 @@ void* getAddrOfMethod(Method input)
 	m.method = input;
 
    oss_t oss;
-   oss << "Method address should be even, please make sure the method "
-       << TypeString<Method>::value() << " is NOT a virtual method";
+   oss << "Expected a non-virtual method, but "
+       << TypeString<Method>::value() << " is virtual";
  
 	MOCKCPP_ASSERT_TRUE(
 		oss.str(),
-	   !(m.desc.u.index%2));
+	   !gnuMethodIsVirtual(m.desc));
 
 
    return m.desc.u.addr;
@@ -74,12 +85,12 @@ GnuMethodDescription getGnuDescOfVirtualMethod(Method input)
 	m.method = input;
 
    oss_t oss;
-   oss << "Virtual method address should be odd, please make sure the method "
-       << TypeString<Method>::value() << " is a virtual method";
+   oss << "Expected a virtual method, but "
+       << TypeString<Method>::value() << " is not virtual";
  
 	MOCKCPP_ASSERT_TRUE(
 		oss.str(),
-	   (m.desc.u.index%2));
+	   gnuMethodIsVirtual(m.desc));
 
 	return m.desc;
 }
@@ -88,17 +99,33 @@ GnuMethodDescription getGnuDescOfVirtualMethod(Method input)
 template <typename C, typename Method>
 unsigned int getIndexOfMethod(Method method)
 {
-   return (getGnuDescOfVirtualMethod<C, Method>(method).u.index - 1)/sizeof(void*);
+   const GnuMethodDescription desc =
+      getGnuDescOfVirtualMethod<C, Method>(method);
+#if defined(__aarch64__) || defined(__arm__)
+   return static_cast<unsigned int>(
+      desc.u.index/static_cast<ptrdiff_t>(sizeof(void*)));
+#else
+   return static_cast<unsigned int>(
+      (desc.u.index - 1)/static_cast<ptrdiff_t>(sizeof(void*)));
+#endif
 }
 
 ///////////////////////////////////////////////////////////
 template <typename C, typename Method>
 unsigned int getDeltaOfMethod(Method method)
 {
-   return getGnuDescOfVirtualMethod<C, Method>(method).delta/sizeof(void*);
+   const GnuMethodDescription desc =
+      getGnuDescOfVirtualMethod<C, Method>(method);
+#if defined(__aarch64__) || defined(__arm__)
+   const ptrdiff_t adjustment = (desc.delta - 1)/2;
+   return static_cast<unsigned int>(
+      adjustment/static_cast<ptrdiff_t>(sizeof(void*)));
+#else
+   return static_cast<unsigned int>(
+      desc.delta/static_cast<ptrdiff_t>(sizeof(void*)));
+#endif
 }
 
 MOCKCPP_NS_END
 
 #endif
-
