@@ -34,6 +34,8 @@ struct JmpCode
     void*  getCodeData() const;
     size_t getCodeSize() const;
     void*  getPatchAddress() const;
+    void markInstalled();
+    void markRestored();
 private:
 	JmpCodeImpl* This;
 };

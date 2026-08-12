@@ -1,6 +1,10 @@
 #include <mockcpp/GlobalMockObject.h>
 #include <mockcpp/mokc.h>
 
+#include <pthread.h>
+#include <sys/socket.h>
+#include <dlfcn.h>
+
 #include "CrossSoTarget.h"
 
 USING_MOCKCPP_NS
@@ -20,10 +24,33 @@ bool hasInstruction(const void* address,
           instruction[2] == 0x03U && instruction[3] == 0xd5U;
 }
 
+bool belongsToMainExecutable(const void* address, const void* mainAddress)
+{
+   Dl_info symbolInfo;
+   Dl_info mainInfo;
+   return ::dladdr(address, &symbolInfo) != 0 &&
+          ::dladdr(mainAddress, &mainInfo) != 0 &&
+          symbolInfo.dli_fbase == mainInfo.dli_fbase;
+}
+
 }
 
 int main()
 {
+   if(!belongsToMainExecutable(reinterpret_cast<const void*>(&socket),
+                               reinterpret_cast<const void*>(&main)) ||
+      !belongsToMainExecutable(reinterpret_cast<const void*>(&listen),
+                               reinterpret_cast<const void*>(&main)) ||
+      !belongsToMainExecutable(
+         reinterpret_cast<const void*>(&pthread_rwlock_rdlock),
+         reinterpret_cast<const void*>(&main)) ||
+      !belongsToMainExecutable(
+         reinterpret_cast<const void*>(&pthread_rwlock_destroy),
+         reinterpret_cast<const void*>(&main)))
+   {
+      return 9;
+   }
+
    const void* executableAddress =
       reinterpret_cast<const void*>(&mockcpp_cross_so_target);
    const bool executablePltHasBti =
@@ -81,11 +108,9 @@ int main()
       .stubs()
       .will(returnValue(78));
 
-   // A short target may be hooked with a 4-byte direct branch when the stub
-   // happens to be nearby, or safely left local when a 16-byte jump would
-   // overwrite the following function.  It must never corrupt its neighbor.
-   const int shortResult = mockcpp_cross_so_short_caller(5);
-   if((shortResult != 6 && shortResult != 78) ||
+   // A far-away short target uses a 4-byte branch to a nearby trampoline.  It
+   // must be hooked without overwriting the following function.
+   if(mockcpp_cross_so_short_caller(5) != 78 ||
       shortExecutableFunction(5) != 78 ||
       mockcpp_cross_so_short_neighbor() != 123 ||
       (shortPltHasBti &&
@@ -172,6 +197,73 @@ int main()
    }
 
    GlobalMockObject::reset();
-   return mockcpp_cross_so_pac_caller(5) == 6 &&
-          mockcpp_cross_so_pac_neighbor() == 124 ? 0 : 42;
+   if(mockcpp_cross_so_pac_caller(5) != 6 ||
+      mockcpp_cross_so_pac_neighbor() != 124)
+   {
+      return 42;
+   }
+
+   if(mockcpp_cross_so_socket_caller() != -1)
+   {
+      return 49;
+   }
+
+   MOCKER(socket).stubs().will(returnValue(501));
+   if(mockcpp_cross_so_socket_caller() != 501)
+   {
+      GlobalMockObject::reset();
+      return 50;
+   }
+   GlobalMockObject::reset();
+   if(mockcpp_cross_so_socket_caller() != -1)
+   {
+      return 53;
+   }
+
+   if(mockcpp_cross_so_listen_caller() != -1)
+   {
+      return 54;
+   }
+   MOCKER(listen).stubs().will(returnValue(502));
+   if(mockcpp_cross_so_listen_caller() != 502)
+   {
+      GlobalMockObject::reset();
+      return 51;
+   }
+   GlobalMockObject::reset();
+   if(mockcpp_cross_so_listen_caller() != -1)
+   {
+      return 55;
+   }
+
+   if(mockcpp_cross_so_rwlock_caller() != 0)
+   {
+      return 56;
+   }
+   MOCKER(pthread_rwlock_rdlock).stubs().will(returnValue(503));
+   if(mockcpp_cross_so_rwlock_caller() != 503)
+   {
+      GlobalMockObject::reset();
+      return 52;
+   }
+
+   GlobalMockObject::reset();
+   if(mockcpp_cross_so_rwlock_caller() != 0)
+   {
+      return 57;
+   }
+
+   if(mockcpp_cross_so_rwlock_destroy_caller() != 0)
+   {
+      return 58;
+   }
+   MOCKER(pthread_rwlock_destroy).stubs().will(returnValue(504));
+   if(mockcpp_cross_so_rwlock_destroy_caller() != 504)
+   {
+      GlobalMockObject::reset();
+      return 59;
+   }
+
+   GlobalMockObject::reset();
+   return mockcpp_cross_so_rwlock_destroy_caller() == 0 ? 0 : 60;
 }

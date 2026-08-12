@@ -51,4 +51,16 @@ int mockcpp_cross_so_pac_neighbor();
 extern "C" MOCKCPP_CROSS_SO_API MOCKCPP_CROSS_SO_NOINLINE
 const void* mockcpp_cross_so_pac_target_address();
 
+extern "C" MOCKCPP_CROSS_SO_API MOCKCPP_CROSS_SO_NOINLINE
+int mockcpp_cross_so_socket_caller();
+
+extern "C" MOCKCPP_CROSS_SO_API MOCKCPP_CROSS_SO_NOINLINE
+int mockcpp_cross_so_listen_caller();
+
+extern "C" MOCKCPP_CROSS_SO_API MOCKCPP_CROSS_SO_NOINLINE
+int mockcpp_cross_so_rwlock_caller();
+
+extern "C" MOCKCPP_CROSS_SO_API MOCKCPP_CROSS_SO_NOINLINE
+int mockcpp_cross_so_rwlock_destroy_caller();
+
 #endif

@@ -60,6 +60,7 @@ struct JmpOnlyApiHookImpl
       // after WriteProcessMemory has already installed the jump.  Preserve the
       // historical ownership behavior until its result can express that state.
       changeCode(m_jmpCode.getCodeData());
+      m_jmpCode.markInstalled();
 #else
       if(!changeCode(m_jmpCode.getCodeData()))
       {
@@ -67,6 +68,10 @@ struct JmpOnlyApiHookImpl
          m_originalData = 0;
          MOCKCPP_REPORT_FAILURE(
             "mockcpp failed to install API hook: unable to modify target code");
+      }
+      else
+      {
+         m_jmpCode.markInstalled();
       }
 #endif
    }
@@ -79,7 +84,13 @@ struct JmpOnlyApiHookImpl
          return;
       }
 
-      changeCode(m_originalData);
+      if(!changeCode(m_originalData))
+      {
+         // Keep all executable support storage alive if restoration failed.
+         // The process is still patched and must never jump to unmapped code.
+         return;
+      }
+      m_jmpCode.markRestored();
       delete [] m_originalData;
       m_originalData = 0;
    }
