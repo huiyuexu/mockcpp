@@ -9,6 +9,8 @@ as a user
 	The other way:
 	sudo make install 
 	and then use /usr/local/include/mockcpp and /usr/local/lib/libmockcpp.a.
+	When linking libmockcpp.a directly on Linux/AArch64 with glibc older than 2.34,
+	add -ldl. CMake builds propagate ${CMAKE_DL_LIBS} through the in-tree target.
 	if the test framework you use is not testngpp, such as cpputest, gtest etc. , you should run these commands: (there is a $xunit_home/include/gtest/gtest.h file)
 	cmake -DMOCKCPP_XUNIT=gtest -DMOCKCPP_XUNIT_HOME=$xunit_home ../mockcpp/mockcpp
 	make

@@ -179,6 +179,7 @@ SET(MOCKCPP_SRCS
     GlobalMockObject.cpp
     JmpOnlyApiHook.cpp
     JmpCode.cpp
+    AArch64PltResolver.cpp
     ApiHook.cpp
 
 )
@@ -326,6 +327,10 @@ ENDFOREACH()
 LINK_DIRECTORIES(${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/tests/3rdparty/testngpp/src)
 
 ADD_LIBRARY(mockcpp STATIC ${MOCKCPP_SRCS})
+
+IF(CMAKE_DL_LIBS)
+   TARGET_LINK_LIBRARIES(mockcpp PUBLIC ${CMAKE_DL_LIBS})
+ENDIF()
 
 INCLUDE_DIRECTORIES(BEFORE ${MOCKCPP_SRC_ROOT}/include ${MOCKCPP_SRC_ROOT}/3rdparty)
 

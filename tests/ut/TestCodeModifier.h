@@ -17,6 +17,7 @@
 
 #include <testngpp/testngpp.hpp>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <mockcpp/JmpCode.h>
 
@@ -127,5 +128,22 @@ FIXTURE(AArch64JmpCode)
       ASSERT_EQ(static_cast<size_t>(16), jmpCode.getCodeSize());
    }
 };
+
+#if defined(MOCKCPP_AARCH64_CROSS_SO_TESTS)
+
+FIXTURE(AArch64CrossSoHook)
+{
+   TEST(resolves a lazy canonical PLT entry to the function in its shared object)
+   {
+      ASSERT_EQ(0, ::system("./cross_so/mockcpp-aarch64-cross-so-lazy"));
+   }
+
+   TEST(resolves an eagerly bound canonical PLT entry to the function in its shared object)
+   {
+      ASSERT_EQ(0, ::system("./cross_so/mockcpp-aarch64-cross-so-now"));
+   }
+};
+
+#endif
 
 #endif

@@ -24,6 +24,7 @@ tests/ut/TestApiHookBase.cpp
 tests/ut/TestChainableMockMethodContainer.cpp
 tests/ut/TestChainableObject.cpp
 tests/ut/TestCheck.cpp
+tests/ut/TestCodeModifier.cpp
 tests/ut/TestConstraintSet.cpp
 tests/ut/TestDelegatedMethod.cpp
 tests/ut/TestDestructorChecker.cpp

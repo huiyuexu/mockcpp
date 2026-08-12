@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include <mockcpp/JmpCode.h>
+#include "AArch64PltResolver.h"
 #include "JmpCodeArch.h"
 
 MOCKCPP_NS_START
@@ -27,20 +28,38 @@ struct JmpCodeImpl
 {
    ////////////////////////////////////////////////
    JmpCodeImpl(const void* from, const void* to)
-#if defined(__aarch64__) || defined(_M_ARM64)
-      : m_codeSize(buildAArch64JmpCode(m_code, from, to))
-#elif defined(__arm__) || defined(_M_ARM)
-      : m_codeSize(buildArmJmpCode(m_code, from, to))
-#else
-      : m_codeSize(sizeof(jmpCodeTemplate))
-#endif
+      : m_codeSize(0)
       , m_patchAddress(GET_JMP_CODE_PATCH_ADDRESS(from))
+      , m_patchModuleHandle(0)
    {
-#if !defined(__aarch64__) && !defined(_M_ARM64) && \
-    !defined(__arm__) && !defined(_M_ARM)
+#if defined(__aarch64__) || defined(_M_ARM64)
+      const AArch64PltResolution resolved =
+         resolveAArch64PltAddress(from);
+      m_patchAddress = const_cast<void*>(resolved.address);
+      m_patchModuleHandle = resolved.moduleHandle;
+      m_codeSize = buildAArch64JmpCode(m_code, m_patchAddress, to);
+      if(m_patchModuleHandle != 0 &&
+         (m_codeSize > resolved.availablePatchSize ||
+          !isAArch64PatchRangeSafe(m_patchAddress, m_codeSize)))
+      {
+         releaseAArch64PltModule(m_patchModuleHandle);
+         m_patchModuleHandle = 0;
+         m_patchAddress = const_cast<void*>(resolved.fallbackAddress);
+         m_codeSize = buildAArch64JmpCode(m_code, m_patchAddress, to);
+      }
+#elif defined(__arm__) || defined(_M_ARM)
+      m_codeSize = buildArmJmpCode(m_code, from, to);
+#else
+      m_codeSize = sizeof(jmpCodeTemplate);
       ::memcpy(m_code, jmpCodeTemplate, sizeof(jmpCodeTemplate));
       SET_JMP_CODE(m_code, from, to);
 #endif
+   }
+
+   ////////////////////////////////////////////////
+   ~JmpCodeImpl()
+   {
+      releaseAArch64PltModule(m_patchModuleHandle);
    }
 
    ////////////////////////////////////////////////
@@ -71,6 +90,7 @@ struct JmpCodeImpl
 #endif
    size_t m_codeSize;
    void* m_patchAddress;
+   void* m_patchModuleHandle;
 };
 
 ///////////////////////////////////////////////////

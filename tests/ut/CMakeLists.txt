@@ -135,7 +135,8 @@ FOREACH(CASE ${UT_CASES})
 
   TARGET_LINK_LIBRARIES(${CASE_MODULE}
     testngpp-static
-    mockcpp)
+    mockcpp
+    ${CMAKE_DL_LIBS})
 
   ADD_CUSTOM_COMMAND(
     OUTPUT ${CASE_SRC}
@@ -145,3 +146,23 @@ FOREACH(CASE ${UT_CASES})
 
   ADD_DEPENDENCIES(${CASE_MODULE} ${CASE_NAME})
 ENDFOREACH()
+
+IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  INCLUDE(CheckCXXSourceCompiles)
+  CHECK_CXX_SOURCE_COMPILES("
+    #include <features.h>
+    #if !defined(__aarch64__) || !defined(__linux__) || !defined(__GLIBC__) || defined(__AARCH64EB__)
+    #error unsupported platform
+    #endif
+    int main() { return 0; }
+    " MOCKCPP_HAS_AARCH64_GLIBC)
+
+  IF(MOCKCPP_HAS_AARCH64_GLIBC)
+    ADD_SUBDIRECTORY(cross_so)
+    ADD_DEPENDENCIES(mockcpp-ut-TestCodeModifier
+      mockcpp-aarch64-cross-so-lazy
+      mockcpp-aarch64-cross-so-now)
+    TARGET_COMPILE_DEFINITIONS(mockcpp-ut-TestCodeModifier PRIVATE
+      MOCKCPP_AARCH64_CROSS_SO_TESTS=1)
+  ENDIF()
+ENDIF()
